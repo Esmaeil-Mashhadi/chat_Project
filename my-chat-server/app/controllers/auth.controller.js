@@ -25,7 +25,7 @@ class AuthController {
       });
 
       if (!user) throw createHttpError.InternalServerError("failed to sign up!");
-      res.cookie("authorization", token, { httpOnly: true , maxAge: 1000 * 60 * 60*24 });
+      res.cookie("authorization", token, { httpOnly: true , maxAge: 1000 * 60 * 60 *24*7 });
       return res.status(201).json({
         statusCode: 201,
         data: {
@@ -40,13 +40,14 @@ class AuthController {
   login = async (req, res, next) => {
     try {
       const { email, password } = req.body;
+   
       const user = await userModel.findOne({ email });
       if (!user) throw createHttpError.NotFound("user not found, sign up please");
       const checkPassword = verfiyPassword(password, user.password);
       if (!checkPassword) throw createHttpError.BadRequest("user or password is not correct");
       const token = await signAccessToken({ email: user.email });
-
-      res.cookie("authorization", token, { httpOnly: true, secure: true, maxAge: 1000 * 60 *1});
+      const refreshToken =  signRefreshToken({email : user.email})
+      res.cookie("authorization", refreshToken, { httpOnly: true, maxAge: 1000 * 60 *60*24*7});
 
       return res.status(200).json({
         status: 200,
@@ -61,25 +62,22 @@ class AuthController {
 
   checkPermission = async (req, res, next) => {
   try {
-    const token = req.headers.authorization
-    const {email , exp} =  verify(token , process.env.USER_SECRET_KEY)
+    const token = req.headers.authorization.split(" ")[1]
+    if(!req.headers.authorization.startsWith("Bearer")) throw createHttpError.BadRequest()
+    const {email , exp} =  verify(token , process.env.REFRESH_SECRET_KEY)
+ 
     const user = await userModel.findOne({email})
     if(!user) throw createHttpError.NotFound("please login first")
+    if(exp*1000 < Date.now()) throw createHttpError.Gone()
 
-     if(exp * 1000 < Date.now()){
-        console.log('expired');
-        const {refreshToken} = await userModel.findOne({email} , {refreshToken:1})    
-        const {email:refreshEmail , exp : refreshExp} = verify(refreshToken , process.env.REFRESH_SECRET_KEY)    
-        if(refreshExp * 1000 < Date.now()){
-            const newToken = signAccessToken({email :refreshEmail})
-            res.cookie("newAuthorization" , newToken , {httpOnly:true , secure:true , maxAge:1000*60*60*24})
-        }else{
-            throw createHttpError.Gone("login again")
-        }
-     }
+
+    const newToken =  await signAccessToken({email})
+
      return res.status(200).json({
       status:200 , 
-      data: {message:"Authenticated"}
+       data : {
+        token : newToken
+       }
      })
   } catch (error) {
     next(error)

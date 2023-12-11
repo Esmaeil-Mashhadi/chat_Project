@@ -7,6 +7,8 @@ const createHttpError = require('http-errors')
 const { default: mongoose } = require('mongoose')
 const cookieParser = require("cookie-parser")
 const session = require('express-session')
+const { initialSocket } = require('./utils/intialSocket')
+const { socketHandler } = require('./socket.io')
 const app = express()
 
 
@@ -18,11 +20,11 @@ module.exports = class Application {
         this.#PORT = PORT 
         this.#DB_URL = DB_URL
         this.serverConfig()
+        this.connectDB()
         this.appConfig()
         this.initClientSession()
         this.routeHandler()
         this.errorHandling()
-        this.connectDB()
 
     }
 
@@ -30,6 +32,8 @@ module.exports = class Application {
     serverConfig  = ()=>{
         const http = require('http')
         const server = http.createServer(app)
+        const io = initialSocket(server)
+        socketHandler(io)
         server.listen(this.#PORT , ()=>{
             console.log(`server ran on http://localhost:${this.#PORT}`);
         })

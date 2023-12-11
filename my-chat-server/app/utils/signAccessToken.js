@@ -7,7 +7,7 @@ const signAccessToken = (payload)=>{
     return new Promise((resolve , reject)=>{
         const secretKey = process.env.USER_SECRET_KEY
         
-        sign(payload ,secretKey , {expiresIn:1000*60*1} , async(err , token)=>{
+        sign(payload ,secretKey , {expiresIn:1000*60} , async(err , token)=>{
             if(err) throw createHttpError.InternalServerError("something went wrong !")
              resolve(token)
         } )
