@@ -65,7 +65,7 @@ class NameSpaceSocket {
            if(!result.modifiedCount) throw new Error("something went wrong") 
         }
   
-        const nameSpaces = await nameSpaceModel.find({} , {rooms:1}).sort({ _id: -1 }).populate([{path:"rooms.messages.sender"}])
+        const nameSpaces = await nameSpaceModel.find({} , {rooms:1}).sort({ _id: -1 }).populate([{path:"rooms.messages.sender" , select:['email' ,'sender' , 'userName'] }])
          nameSpaces.forEach(nameSpace => {
           const room =  nameSpace.rooms.find(item => item.name == roomName)
           if(room){
