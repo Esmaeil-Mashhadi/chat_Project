@@ -8,24 +8,25 @@ const { hashPassword, verfiyPassword } = require("../utils/hash&compare");
 class AuthController {
   signUp = async (req, res, next) => {
     try {
-      const { email, password } = req.body;
+      const { email, password , userName} = req.body;
 
       if (!email && !password) {
         throw createHttpError.BadRequest("invalid data");
       }
       await checkUserExistence(email);
-      const token = await signAccessToken({ email });
-      const refreshToken = signRefreshToken({ email });
+      const token = await signAccessToken({ email , userName});
+      const refreshToken = signRefreshToken({ email , userName});
       const hashedPassword = await hashPassword(password);
       const user = await userModel.create({
         email,
         password: hashedPassword,
+        userName ,
         token,
         refreshToken,
       });
 
       if (!user) throw createHttpError.InternalServerError("failed to sign up!");
-      res.cookie("authorization", token, { httpOnly: true , maxAge: 1000 * 60 * 60 *24*7 });
+      res.cookie("authorization", refreshToken, { httpOnly: true , maxAge: 1000 * 60 * 60 *24*7 });
       return res.status(201).json({
         statusCode: 201,
         data: {
@@ -45,8 +46,8 @@ class AuthController {
       if (!user) throw createHttpError.NotFound("user not found, sign up please");
       const checkPassword = verfiyPassword(password, user.password);
       if (!checkPassword) throw createHttpError.BadRequest("user or password is not correct");
-      const token = await signAccessToken({ email: user.email });
-      const refreshToken =  signRefreshToken({email : user.email})
+      const token = await signAccessToken({ email: user.email  , userName: user.userName});
+      const refreshToken =  signRefreshToken({email : user.email , userName : user.userName})
       res.cookie("authorization", refreshToken, { httpOnly: true, maxAge: 1000 * 60 *60*24*7});
 
       return res.status(200).json({
@@ -71,7 +72,7 @@ class AuthController {
     if(exp*1000 < Date.now()) throw createHttpError.Gone()
 
 
-    const newToken =  await signAccessToken({email})
+    const newToken =  await signAccessToken({email , userName: user.userName})
 
      return res.status(200).json({
       status:200 , 
