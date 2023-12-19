@@ -1,6 +1,7 @@
 const { nameSpaceModel } = require("../../models/conversationModel")
 const { userModel } = require("../../models/usermodel")
-
+const path = require('path')
+const fs = require('fs')
 
 class NameSpaceSocket {
     #io 
@@ -11,9 +12,7 @@ class NameSpaceSocket {
     
     initConnection(){
         this.#io.on("connection" , async(socket)=>{
-       
-
-        const nameSpaces = await nameSpaceModel.find({} , {title: 1  , endpoint:1}).sort({_id:-1})
+        const nameSpaces = await nameSpaceModel.find({}).sort({_id:-1})
             socket.emit("nameSpacesList" , nameSpaces)
         })
 
@@ -28,13 +27,11 @@ class NameSpaceSocket {
               socket.join(roomName) 
               this.getCountOfOnlineUsers(nameSpace.endpoint , roomName) 
                this.getNewMessage(socket , roomName , nameSpace.endpoint )
-
-         
               socket.on('disconnect' , async()=>{
                 this.getCountOfOnlineUsers(nameSpace.endpoint , roomName)
               })
-
             }) 
+
             socket.emit('roomList', nameSpace.rooms);
           });
         }
@@ -51,7 +48,7 @@ class NameSpaceSocket {
     }
     
     getNewMessage  = (socket , roomName , endpoint)=>{
-      socket.on('clientMessage' , async({message , email})=>{
+      socket.on('clientMessage' , async({message , email})=>{ 
         if(message){
           const {_id} = await userModel.findOne({email})
           const dateTime = new Date().toLocaleTimeString()
@@ -64,17 +61,19 @@ class NameSpaceSocket {
            }}}) 
            if(!result.modifiedCount) throw new Error("something went wrong") 
         }
-  
+
         const nameSpaces = await nameSpaceModel.find({} , {rooms:1}).sort({ _id: -1 }).populate([{path:"rooms.messages.sender" , select:['email' ,'sender' , 'userName'] }])
          nameSpaces.forEach(nameSpace => {
           const room =  nameSpace.rooms.find(item => item.name == roomName)
           if(room){
-            this.#io.of(`${endpoint}`).in(roomName).emit('roomInfo' , {messages :room.messages , endpoint, roomName  })
+            this.#io.of(`${endpoint}`).in(roomName).emit('roomInfo' , {messages :room.messages , endpoint, roomName})
           }
          })
        
       })
     }  
+
+
 }
 
 
